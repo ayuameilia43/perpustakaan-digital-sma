@@ -1,0 +1,375 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  LIBRARIAN
+  STUDENT
+  TEACHER
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum CopyStatus {
+  AVAILABLE
+  BORROWED
+  MAINTENANCE
+  LOST
+}
+
+enum BorrowStatus {
+  PENDING
+  BORROWED
+  RETURNED
+  OVERDUE
+  REJECTED
+}
+
+enum FineStatus {
+  UNPAID
+  PENDING_VERIFICATION
+  PAID
+  REJECTED
+}
+
+enum NotificationType {
+  INFO
+  DUE_REMINDER
+  OVERDUE_ALERT
+  BORROW_APPROVED
+  BORROW_REJECTED
+  SYSTEM
+}
+
+model User {
+  id            String          @id @default(uuid())
+  nisn_nip      String          @unique
+  name          String
+  email         String          @unique
+  password_hash String
+  role          Role            @default(STUDENT)
+  class_or_dept String?
+  status        UserStatus      @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  borrowings    Borrowing[]     @relation("UserBorrowings")
+  approvedLoans Borrowing[]     @relation("LibrarianApprovals")
+  reviews       Review[]
+  ebookProgress EbookProgress[]
+  notifications Notification[]
+  aiChats       AiChatHistory[]
+  auditLogs     AuditLog[]
+  telegramLink  TelegramLink?
+  verifiedFines Fine[]              @relation("FineVerifier")
+  fineHistories FineStatusHistory[] @relation("FineHistoryActor")
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  books       Book[]
+
+  @@index([name])
+  @@map("categories")
+}
+
+model Author {
+  id        String   @id @default(uuid())
+  name      String
+  bio       String?
+  books     Book[]
+  createdAt DateTime @default(now())
+
+  @@index([name])
+  @@map("authors")
+}
+
+model Publisher {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  books     Book[]
+  createdAt DateTime @default(now())
+
+  @@index([name])
+  @@map("publishers")
+}
+
+model Book {
+  id              String          @id @default(uuid())
+  isbn            String          @unique
+  title           String
+  publish_year    Int
+
+  author_id       String
+  author          Author          @relation(fields: [author_id], references: [id])
+
+  publisher_id    String
+  publisher       Publisher       @relation(fields: [publisher_id], references: [id])
+
+  category_id     String
+  category        Category        @relation(fields: [category_id], references: [id])
+
+  stock_total     Int             @default(1)
+  stock_available Int             @default(1)
+  location_rack   String          @default("Rak Umum")
+  cover_image     String?
+  description     String?
+
+  // E-book metadata
+  is_ebook        Boolean         @default(false)
+  ebook_file_url  String?
+  ebook_format    String?         @default("PDF")
+  ebook_size_mb   Float?
+
+  // AI Recommendation & analytics support
+  tags            String?
+  total_borrowed  Int             @default(0)
+  rating_avg      Float           @default(0.0)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  copies          BookCopy[]
+  borrowings      Borrowing[]
+  reviews         Review[]
+  ebookProgress   EbookProgress[]
+
+  @@index([title])
+  @@index([category_id])
+  @@index([author_id])
+  @@index([publisher_id])
+  @@index([is_ebook])
+  @@map("books")
+}
+
+model BookCopy {
+  id         String     @id @default(uuid())
+  copy_code  String     @unique
+  book_id    String
+  book       Book       @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  status     CopyStatus @default(AVAILABLE)
+  condition  String     @default("Baik")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  borrowings Borrowing[]
+
+  @@index([book_id])
+  @@index([status])
+  @@map("book_copies")
+}
+
+model Borrowing {
+  id           String       @id @default(uuid())
+  borrow_code  String       @unique
+  user_id      String
+  user         User         @relation("UserBorrowings", fields: [user_id], references: [id], onDelete: Cascade)
+
+  book_id      String
+  book         Book         @relation(fields: [book_id], references: [id], onDelete: Cascade)
+
+  book_copy_id String?
+  bookCopy     BookCopy?    @relation(fields: [book_copy_id], references: [id], onDelete: SetNull)
+
+  request_date DateTime     @default(now())
+  borrow_date  DateTime?
+  due_date     DateTime?
+  return_date  DateTime?
+  status       BorrowStatus @default(PENDING)
+
+  approved_by  String?
+  approver     User?        @relation("LibrarianApprovals", fields: [approved_by], references: [id])
+
+  fine_amount  Float        @default(0.0)
+  is_fine_paid Boolean      @default(false)
+  notes        String?
+
+  fine         Fine?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([user_id])
+  @@index([book_id])
+  @@index([status])
+  @@index([due_date])
+  @@map("borrowings")
+}
+
+model Fine {
+  id           String     @id @default(uuid())
+  fine_code    String?    @unique
+  borrowing_id String     @unique
+  borrowing    Borrowing  @relation(fields: [borrowing_id], references: [id], onDelete: Cascade)
+  amount       Float
+  reason       String
+  status       FineStatus @default(UNPAID)
+  // Snapshot perhitungan saat pengembalian (diisi untuk denda baru; denda lama diurai dari `reason`).
+  late_days    Int        @default(0)
+  fine_per_day Float      @default(0)
+  // Batas pembayaran = tanggal diterbitkan + fine_payment_deadline_days (hari). Null untuk denda lama -> dihitung dari createdAt.
+  due_at       DateTime?
+  paid_at      DateTime?
+  // Konfirmasi pembayaran siswa (diisi saat siswa menekan Konfirmasi Pembayaran, BUKAN saat lunas).
+  confirmed_at   DateTime?
+  payment_method String?
+  payment_note   String?
+  proof_url      String?
+  proof_name     String?
+  // Hasil verifikasi admin/pustakawan.
+  rejection_reason String?
+  verified_by_id   String?
+  verified_by      User?    @relation("FineVerifier", fields: [verified_by_id], references: [id], onDelete: SetNull)
+  verified_at      DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @default(now()) @updatedAt
+
+  histories FineStatusHistory[]
+
+  @@index([status])
+  @@map("fines")
+}
+
+model FineStatusHistory {
+  id         String   @id @default(uuid())
+  fine_id    String
+  fine       Fine     @relation(fields: [fine_id], references: [id], onDelete: Cascade)
+  from_status String?
+  to_status   String
+  actor_id    String?
+  actor       User?    @relation("FineHistoryActor", fields: [actor_id], references: [id], onDelete: SetNull)
+  actor_name  String?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([fine_id])
+  @@map("fine_status_histories")
+}
+
+model EbookProgress {
+  id           String   @id @default(uuid())
+  user_id      String
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book_id      String
+  book         Book     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  last_page    Int      @default(1)
+  total_pages  Int      @default(1)
+  last_read_at DateTime @default(now())
+
+  @@unique([user_id, book_id])
+  @@map("ebook_progress")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book_id   String
+  book      Book     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+
+  @@index([book_id])
+  @@index([user_id])
+  @@map("reviews")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  user_id   String
+  user      User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  is_read   Boolean          @default(false)
+  type      NotificationType @default(INFO)
+  createdAt DateTime         @default(now())
+
+  @@index([user_id])
+  @@index([is_read])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  user_id    String?
+  user       User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  action     String
+  entity     String
+  entity_id  String?
+  details    String?
+  ip_address String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model AiChatHistory {
+  id        String   @id @default(uuid())
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  prompt    String
+  response  String
+  createdAt DateTime @default(now())
+
+  @@index([user_id])
+  @@map("ai_chat_histories")
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model TelegramLink {
+  id                String    @id @default(uuid())
+  user_id           String    @unique
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  telegram_chat_id  String    @unique
+  linked_at         DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@index([telegram_chat_id])
+  @@map("telegram_links")
+}
+
+model TelegramLinkToken {
+  id         String    @id @default(uuid())
+  user_id    String    @unique
+  token_hash String    @unique
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime  @default(now())
+
+  @@index([token_hash])
+  @@index([expires_at])
+  @@map("telegram_link_tokens")
+}
