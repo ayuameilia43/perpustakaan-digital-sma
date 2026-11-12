@@ -1,0 +1,74 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 587 >>
+stream
+BT /F1 18 Tf 50 790 Td (Pemrograman Web Modern dengan React & Next.js) Tj ET
+BT /F1 11 Tf 50 770 Td () Tj ET
+BT /F1 11 Tf 50 750 Td (Contoh E-Book - Perpustakaan Digital SMA) Tj ET
+BT /F1 11 Tf 50 730 Td () Tj ET
+BT /F1 11 Tf 50 710 Td (Bab 1: Pengenalan React dan Next.js) Tj ET
+BT /F1 11 Tf 50 690 Td (React adalah library JavaScript untuk membangun UI.) Tj ET
+BT /F1 11 Tf 50 670 Td (Next.js adalah framework React untuk produksi.) Tj ET
+BT /F1 11 Tf 50 650 Td (Bab ini membahas konsep dasar komponen dan props.) Tj ET
+BT /F1 9 Tf 270 30 Td (Halaman 1 dari 3 - React & Next.js) Tj ET
+
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 460 >>
+stream
+BT /F1 11 Tf 50 790 Td (Bab 2: Routing dan Data Fetching) Tj ET
+BT /F1 11 Tf 50 770 Td (Next.js App Router menggunakan folder-based routing.) Tj ET
+BT /F1 11 Tf 50 750 Td (Server Components berjalan di server secara default.) Tj ET
+BT /F1 11 Tf 50 730 Td (Gunakan fetch\(\) dengan cache untuk data fetching.) Tj ET
+BT /F1 11 Tf 50 710 Td (Contoh: const res = await fetch\('/api/books'\);) Tj ET
+BT /F1 9 Tf 270 30 Td (Halaman 2 dari 3 - React & Next.js) Tj ET
+
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 363 >>
+stream
+BT /F1 11 Tf 50 790 Td (Bab 3: Deployment) Tj ET
+BT /F1 11 Tf 50 770 Td (Jalankan 'npm run build' untuk production build.) Tj ET
+BT /F1 11 Tf 50 750 Td (Deploy ke Vercel, VPS, atau Laragon lokal.) Tj ET
+BT /F1 11 Tf 50 730 Td (Selamat membaca! Kembalikan ke katalog untuk pinjam buku fisik.) Tj ET
+BT /F1 9 Tf 270 30 Td (Halaman 3 dari 3 - React & Next.js) Tj ET
+
+endstream
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000323 00000 n 
+0000000961 00000 n 
+0000001087 00000 n 
+0000001598 00000 n 
+0000001724 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+2138
+%%EOF
